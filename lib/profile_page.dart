@@ -27,8 +27,7 @@ class _ProfilePage extends State<ProfilePage> {
   editProfile() {
     EditProfilePage editPage = new EditProfilePage();
 
-    Navigator
-        .of(context)
+    Navigator.of(context)
         .push(new MaterialPageRoute<bool>(builder: (BuildContext context) {
       return new Center(
         child: new Scaffold(
@@ -87,7 +86,7 @@ class _ProfilePage extends State<ProfilePage> {
     Firestore.instance
         .collection("insta_a_feed")
         .document(profileId)
-        .getCollection("items")
+        .collection("items")
         .document(currentUserId)
         .setData({
       "ownerId": profileId,
@@ -118,7 +117,7 @@ class _ProfilePage extends State<ProfilePage> {
     Firestore.instance
         .collection("insta_a_feed")
         .document(profileId)
-        .getCollection("items")
+        .collection("items")
         .document(currentUserId)
         .delete();
   }
@@ -295,7 +294,7 @@ class _ProfilePage extends State<ProfilePage> {
         stream: Firestore.instance
             .collection('insta_users')
             .document(profileId)
-            .snapshots,
+            .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData)
             return new Container(
@@ -409,8 +408,7 @@ class ImageTile extends StatelessWidget {
   ImageTile(this.imagePost);
 
   clickedImage(BuildContext context) {
-    Navigator
-        .of(context)
+    Navigator.of(context)
         .push(new MaterialPageRoute<bool>(builder: (BuildContext context) {
       return new Center(
         child: new Scaffold(
@@ -470,4 +468,11 @@ class User {
       following: document['following'],
     );
   }
+}
+
+void openProfile(BuildContext context, String userId) {
+  Navigator.of(context)
+      .push(new MaterialPageRoute<bool>(builder: (BuildContext context) {
+    return new ProfilePage(userId: userId);
+  }));
 }

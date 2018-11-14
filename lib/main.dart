@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'feed.dart';
 import 'upload_page.dart';
 import 'dart:async';
@@ -9,12 +10,21 @@ import 'profile_page.dart';
 import 'search_page.dart';
 import 'activity_feed.dart';
 import 'create_account.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:io' show Platform;
 
 final auth = FirebaseAuth.instance;
 final googleSignIn = new GoogleSignIn();
 final ref = Firestore.instance.collection('insta_users');
+final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
 
 User currentUserModel;
+
+Future<void> main() async {
+  await Firestore.instance.settings(timestampsInSnapshotsEnabled: true);
+
+  runApp(new Fluttergram());
+}
 
 Future<Null> _ensureLoggedIn(BuildContext context) async {
   GoogleSignInAccount user = googleSignIn.currentUser;
@@ -32,6 +42,31 @@ Future<Null> _ensureLoggedIn(BuildContext context) async {
         await googleSignIn.currentUser.authentication;
     await auth.signInWithGoogle(
         idToken: credentials.idToken, accessToken: credentials.accessToken);
+  }
+}
+
+Future<Null> _setUpNotifications() async {
+  if (Platform.isAndroid) {
+    _firebaseMessaging.configure(
+      onMessage: (Map<String, dynamic> message) async {
+        print('on message $message');
+      },
+      onResume: (Map<String, dynamic> message) async {
+        print('on resume $message');
+      },
+      onLaunch: (Map<String, dynamic> message) async {
+        print('on launch $message');
+      },
+    );
+
+    _firebaseMessaging.getToken().then((token) {
+      print("Firebase Messaging Token: " + token);
+
+      Firestore.instance
+          .collection("insta_users")
+          .document(currentUserModel.id)
+          .updateData({"androidNotificationToken": token});
+    });
   }
 }
 
@@ -85,7 +120,7 @@ tryCreateUserRecord(BuildContext context) async {
               )),
     );
 
-    if (userName != null || userName.length != 0){
+    if (userName != null || userName.length != 0) {
       ref.document(user.id).setData({
         "id": user.id,
         "username": userName,
@@ -138,6 +173,7 @@ PageController pageController;
 class _HomePageState extends State<HomePage> {
   int _page = 0;
   bool triedSilentLogin = false;
+  bool setupNotifications = false;
 
   Scaffold buildLoginPage() {
     return new Scaffold(
@@ -173,6 +209,11 @@ class _HomePageState extends State<HomePage> {
     if (triedSilentLogin == false) {
       silentLogin(context);
     }
+
+    if (setupNotifications == false) {
+      setUpNotifications();
+    }
+
     return googleSignIn.currentUser == null
         ? buildLoginPage()
         : new Scaffold(
@@ -199,32 +240,32 @@ class _HomePageState extends State<HomePage> {
               physics: new NeverScrollableScrollPhysics(),
               onPageChanged: onPageChanged,
             ),
-            bottomNavigationBar: new BottomNavigationBar(
+            bottomNavigationBar: new CupertinoTabBar(
+              activeColor: Colors.orange,
               items: <BottomNavigationBarItem>[
                 new BottomNavigationBarItem(
-                    icon: new Icon(Icons.home, color: Colors.grey),
-                    title: new Container(),
+                    icon: new Icon(Icons.home, color: (_page == 0) ? Colors.black : Colors.grey),
+                    title: new Container(height: 0.0),
                     backgroundColor: Colors.white),
                 new BottomNavigationBarItem(
-                    icon: new Icon(Icons.search, color: Colors.grey),
-                    title: new Container(),
+                    icon: new Icon(Icons.search, color: (_page == 1) ? Colors.black : Colors.grey),
+                    title: new Container(height: 0.0),
                     backgroundColor: Colors.white),
                 new BottomNavigationBarItem(
-                    icon: new Icon(Icons.add_circle, color: Colors.grey),
-                    title: new Container(),
+                    icon: new Icon(Icons.add_circle, color: (_page == 2) ? Colors.black : Colors.grey),
+                    title: new Container(height: 0.0),
                     backgroundColor: Colors.white),
                 new BottomNavigationBarItem(
-                    icon: new Icon(Icons.star, color: Colors.grey),
-                    title: new Container(),
+                    icon: new Icon(Icons.star, color: (_page == 3) ? Colors.black : Colors.grey),
+                    title: new Container(height: 0.0),
                     backgroundColor: Colors.white),
                 new BottomNavigationBarItem(
-                    icon: new Icon(Icons.person_outline, color: Colors.grey),
-                    title: new Container(),
+                    icon: new Icon(Icons.person, color: (_page == 4) ? Colors.black : Colors.grey),
+                    title: new Container(height: 0.0),
                     backgroundColor: Colors.white),
               ],
               onTap: navigationTapped,
               currentIndex: _page,
-              type: BottomNavigationBarType.fixed,
             ),
           );
   }
@@ -233,6 +274,13 @@ class _HomePageState extends State<HomePage> {
     await _ensureLoggedIn(context);
     setState(() {
       triedSilentLogin = true;
+    });
+  }
+
+  void setUpNotifications() {
+    _setUpNotifications();
+    setState(() {
+      setupNotifications = true;
     });
   }
 
@@ -264,5 +312,3 @@ class _HomePageState extends State<HomePage> {
     pageController.dispose();
   }
 }
-
-void main() => runApp(new Fluttergram());
